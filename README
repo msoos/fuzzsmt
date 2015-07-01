@@ -1,0 +1,129 @@
+ ******************************************************************************
+ *                           FuzzSMT                                          *
+ ******************************************************************************
+
+  This is a release of FuzzSMT which is a fuzzing tool for SMT formulas. See
+  www.smtlib.org for more details about SMT. For more info about fuzz
+  testing SMT solvers see our paper: 'Robert Brummayer and Armin Biere. 
+  Fuzzing and Delta-Debugging SMT Solvers', presented at SMT'09. FuzzSMT is
+  released under GPL. A copy of the license can be found in the file COPYING. 
+
+  The fuzzer is written in Java 5. I assume that you work on a UNIX/LINUX
+  system with Sun's JDK 5 or higher installed.  However, it should be easy
+  to follow the introductions and to use FuzzSMT on any other operating
+  system that supports Java. Note that if you do not want to compile the
+  fuzzer yourself, you just need a compatible Java runtime environment
+  (supporting Java 5 or higher) in order to run the fuzzer.
+
+  I use Apache Ant as a build system and I also provide the build-file
+  'build.xml'. So, if you want to build the fuzzer, you have to install
+  Ant. Then, go to the working directory of FuzzSMT and simply type 'ant'
+  to build the fuzzer. For UNIX/LINUX system I provide a simple wrapper
+  shell script 'fuzzsmt' which is convenient to use.
+
+  If you want to enable the debugging code of the fuzzer, then enable 
+  compilation with debugging info in the build file 'build.xml':
+
+  <javac debug="yes" srcdir="${src}" destdir="${build}"/>
+
+  The code of the fuzzer contains assertions. If you want to enable these
+  assertions at run time, you have to call the java interpreter with the
+  option '-ea'. Simply add this option to the script 'fuzzsmt'. If you just
+  want to run the fuzzer, skip the two steps above.
+
+  In contrast to my previous fuzzing tool called FuzzSMTBV, FuzzSMT is not
+  limited to bit-vector theories. Call 'fuzzsmt -h' to get an overview of the
+  supported theories. I tried to support all theories that are supported
+  by the current version of the SMT-LIB. As you can imagine it was a lot of
+  work. I still have some ideas and improvements that I want to implement,
+  maybe in future releases.
+
+  The fuzzer has been designed to be highly customizable. Therefore, there
+  are many commandline options available. You should experiment with them
+  in order to adjust the fuzzer to your needs. Call the fuzzer with '-h' in
+  order to get an overview of the available options. As the usage message is
+  quite large, it is a good idea to pipe it to a pager such as less. Do not
+  worry, each option has a default value, so you do not have to adjust them
+  if you do not want to. I tried to configure the fuzzer with reasonable
+  default values. So, if you do not want to change the default values,
+  just call the fuzzer with the specified logic, e.g. 'fuzzsmt QF_IDL'.
+
+  The fuzzer has been designed to randomize itself. Typically, for each
+  option, e.g. the number of variables in the input layer, you can specify
+  a minimum and a maximum value. The fuzzer randomly chooses a value within
+  this domain.  This takes the load off the user, i.e. the user does not have
+  to write a script that randomizes the fuzzer options. If you do not want
+  this behavior, e.g. you are interested in random formulas that have exactly
+  'n' variables, then simply set the minimum and the maximum value to 'n'.
+
+  If you have comments, questions, improvements or bug reports, then just
+  send them to my mail address: robert.brummayer@gmail.com 
+  I will try to answer your mails as soon as possible.
+
+  Robert
+
+
+ ******************************************************************************
+ *                              FuzzSMT 0.31                                  *
+ *                             Trevor Hansen                                  * 
+ ******************************************************************************
+Changes in 0.3
+--------------
+* By default, FuzzSMT now outputs SMT-LIB2 format. To output SMT-LIB1 format put
+  the -smtlib1 command line argument after the name of the logic.
+* The -bulk-export option creates instances in the current directory.
+  Files are named f_[0..n).smt or f_[0..n).smt2. This feature was added because the 
+  JVM is slow to load, the JVM takes perhaps 100ms to load, but it only takes around
+  1ms to generate each instance. Using this feature means that 100 instances can be 
+  generated in around 200ms instead of 10s. i.e. FuzzSMT is asymptotically 100 times
+  faster.
+* The QF_AUFBV logic now has a default maximum number of uninterpreted predicates
+  and uninterpreted functions of 2. Previously it had a maximum of zero, so no
+  uninterpreted functions would be output by default.
+* The LRA & QF_ABV logics have been added. No old logics have been removed, for
+  instance QF_A remains even though it is not an SMT-LIB2 logic.
+* The amount to rotate left and rotate right are now taken from 
+  [0,2 + bitwidth), previously it was in [0, bitwidth). This generates instances
+  that rely on the modulo-bitwidth behaviour of rotate left/right.
+
+Changes in 0.31
+--------------
+* The version number has been changed.
+* QF_RDL no longer outputs single arity pluses, e.g. (+ v12). The specification of QF_RDL was changed in December 2010.
+* It's possible to specify a prefix now when outputing bulk files. This is to help when multiple threads are operating in the same directory.
+* The default file prefix when bulk exporting is now _file_
+
+Limitations of 0.31
+--------------
+* No distincts with greater than 2 operands are generated.
+* The LRA output is the same as QF_LRA, i.e. no variables are quantified over.
+* No UFLRA & UFNIA logics. Both logics have benchmarks, but aren't currently listed on:
+	http://goedel.cs.uiowa.edu/smtlib/logics.html 
+* Sometimes QF_UFBV outputs divisions where the denominator isn't constrained to be non-zero.
+
+Testing of 0.31
+--------------
+I ran the below script for a while. Z3 2.16 & "CVC3 2010-09-25" were able to parse most of the generated instances.
+
+while [ 1 -eq 1 ]; do
+	for t in  'QF_ABV' 'QF_AUFBV' 'QF_AUFLIA' 'QF_AX' 'QF_BV' 'QF_IDL' 'QF_L
+IA' 'QF_LRA'  'QF_NIA' 'QF_NRA'  'QF_RDL' 'QF_UF' 'QF_UFBV' 'QF_UFIDL' 'QF_UFLIA
+' 'QF_UFLRA' 'QF_UFNRA'   'AUFLIA' 'AUFLIRA' 'AUFNIRA' 'LRA' ; do
+		java FuzzSMT  $t -bulk-export 100 
+		for f in `ls -1 _file_*.smt2` ; do
+			cvc3=`(ulimit -t 25; cat $f | ~/tools/cvc3_ex -lang smt2)`
+			z3=`(ulimit -t 25;z3 MBQI=true ELIM_QUANTIFIERS=true $f)
+`			z3=`echo $z3 | rev | cut -d " " -f1 | rev`
+			echo $cvc3 $z3
+			if [ "$cvc3" = "sat" -a "$z3" = "unsat" ]; then
+				mv $f `tempfile --directory=cvc3`
+			fi
+			if [  "$cvc3" = "unsat" -a "$z3" = "sat"  ]; then
+				mv $f `tempfile --directory=cvc3`
+			fi
+		done
+	done
+done
+
+
+

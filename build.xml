@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<project name="FuzzSMT" default="all" basedir=".">
+
+  <property name="src" value="."/>
+  <property name="build" value="build"/>
+
+  <target name="init">
+    <mkdir dir="${build}"/>
+  </target>
+
+  <target name="all" depends="init">
+    <javac debug="no" srcdir="${src}" destdir="${build}"/>
+    <jar destfile="fuzzsmt.jar" basedir="${build}">
+      <manifest>
+        <attribute name="Main-Class" value="FuzzSMT"/>
+      </manifest>
+    </jar>
+  </target>
+
+  <target name="clean">
+    <delete dir="${build}"/>
+    <delete file="fuzzsmt.jar"/>
+  </target>
+
+</project>
